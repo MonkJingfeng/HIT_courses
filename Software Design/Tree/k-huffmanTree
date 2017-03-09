@@ -1,0 +1,145 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MaxBit = 10;//初始设定的最大编码位数
+const int MaxN = 2333;//初始设定的最大结点个数
+//哈夫曼树的结点结构
+struct HaffNode {
+    int weight;//权值
+    int flag;//标记
+    int parent;//双亲结点下标
+    int child[10];//孩子下标
+} ;
+//存放哈夫曼编码的数据元素结构
+struct Code {
+    int bit[MaxBit];//数组
+    int start;//编码的起始下标
+    int weight;//字符的权值
+} ;
+//存放排序区的元素下标和权重
+struct node {
+    int weight;//权重
+    int index;//下标
+    node() {}
+    node(int weight, int index):weight(weight), index(index) {}
+    bool operator<(const node& other)const {
+        return weight < other.weight;
+    }
+} ;
+//建立叶结点个数为n权值为weight的哈夫曼树haffTree
+void Haffman(int weight[], int n, int k, HaffNode haffTree[]) {
+    int *x = new int[k];  //x是用来保存最小的k个值在数组对应的下标
+    int t = (n - 1) / (k - 1);
+    //哈夫曼树haffTree初始化。n个叶结点的k叉哈夫曼树共有t*k+1个结点
+    for (int i=0; i<t*k+1; i++) {
+        if (i < n)
+            haffTree[i].weight = weight[i];
+        else
+            haffTree[i].weight = 0;
+        //初始化
+        haffTree[i].parent = 0;
+        haffTree[i].flag = 0;
+        memset(haffTree[i].child, -1, sizeof(haffTree[i].child));
+    }
+    //构造哈夫曼树haffTree的t个非叶结点
+    for (int i=0; i<t; i++) {
+        for (int j=0; j<k; j++)
+            *(x + j) = 0;
+
+        node nod[MaxN];
+        int cnt = 0;
+        //将未加入的节点压进数组
+        for (int j=0; j<n+i; j++) {
+            if (haffTree[j].flag == 0) {
+                nod[cnt].weight = haffTree[j].weight, nod[cnt].index = j;
+                cnt++;
+            }
+        }
+        //选出权值最小的k个结点
+        sort(nod, nod+cnt);
+        for (int j=0; j<k; j++) {
+            *(x + j) = nod[j].index;
+        }
+
+        for (int j=0; j<k; j++) {
+            haffTree[*(x+j)].parent = n + i;
+            haffTree[*(x+j)].flag = 1;
+            haffTree[n+i].weight += haffTree[*(x+j)].weight;
+            haffTree[n+i].child[j] = *(x + j);
+        }
+    }
+    delete[] x;
+}
+//由n个结点的哈夫曼树haffTree构造哈夫曼编码haffCode
+void HaffmanCode(HaffNode haffTree[], int n, int k, Code haffCode[]) {
+    Code *cd = new Code;
+    int child, parent;
+    //求n个叶结点的哈夫曼编码
+    for (int i=0; i<n; i++) {
+        cd->start = 0;//从0开始计数
+        cd->weight = haffTree[i].weight;//取得编码对应权值的字符
+        child = i;
+        parent = haffTree[child].parent;
+        //由叶结点向上直到根结点
+        while (parent != 0) {
+            for (int j=0; j<k; j++) {
+                if (haffTree[parent].child[j] == child)
+                    cd->bit[cd->start] = j;
+            }
+            cd->start++;//编码自增
+            child = parent;
+            parent = haffTree[child].parent;
+        }
+        //保存叶结点的编码和不等长编码的起始位
+        for (int j=cd->start-1; j>=0; j--)//从根节点开始计数
+            haffCode[i].bit[cd->start-j-1] = cd->bit[j];
+
+        haffCode[i].start = cd->start;
+        haffCode[i].weight = cd->weight;//保存编码对应的权值
+    }
+}
+int main()
+{
+    int n, k, add_number, m = 0;
+    int weight[MaxN];
+    puts("Enter the total number of elements and the value of k:");
+    scanf("%d %d", &n, &k);
+    if (k < 2) {
+        puts("定义的k过小！");
+        exit(0);
+    } else if (k > 10) {
+        puts("定义的k过大！");
+        exit(0);
+    }
+    int tmp = n % (k - 1);
+    if (tmp <= 1) add_number = 1 - tmp;
+    else add_number = k - tmp;
+    if (2 == k) add_number = 0;
+    if (n > MaxN) {
+        puts("定义的n越界，修改MaxN!");
+        exit(0);
+    }
+    puts("Enter every element's weight:");
+    for (int i=0; i<n; i++)
+        scanf("%d", &weight[i]);
+    //人工补充权值为0的元素构造满k叉树
+    for (int i=0; i<add_number; i++)
+        weight[i+n] = 0;
+    n += add_number;
+    HaffNode* myHaffTree = new HaffNode[(n*k-1)/(k-1)];
+    Code* myHaffCode = new Code[n];
+    Haffman(weight, n, k, myHaffTree);
+    HaffmanCode(myHaffTree, n, k, myHaffCode);
+    //输出每个叶结点的哈夫曼编码
+    for (int i=0; i<n; i++) {
+        if (myHaffCode[i].weight == 0) //排除人工增加的结点
+            continue;
+        printf("Weight = %d    Code = ", myHaffCode[i].weight);
+        for (int j=0; j<myHaffCode[i].start; j++)
+            printf("%d", myHaffCode[i].bit[j]);
+        m += myHaffCode[i].weight * myHaffCode[i].start;
+        puts("");
+    }
+    printf("huffman's WPL is: %d\n", m);
+    return 0;
+}
